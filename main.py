@@ -3,6 +3,7 @@ from discord import TextChannel
 from discord import app_commands
 import requests
 import os
+import sys
 import asyncio
 
 
@@ -200,4 +201,6 @@ async def info_command(interaction: discord.Interaction):
 
 
 
-client.run(os.environ['token'])
+
+
+client.run(sys.argv[1])
