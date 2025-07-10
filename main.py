@@ -196,7 +196,6 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
 
     author_id = interaction.user.id
     DEL_KEY = os.getenv("delkey")
-    print(f"Sending key: {DEL_KEY}")
 
     async def run_clear():
         await interaction.response.defer(ephemeral=True)
