@@ -28,7 +28,7 @@ class MyClient(discord.Client):
             print("guild not found")
             return
 
-        category = discord.utils.get(guild.categories, name="users")
+        category = discord.utils.get(guild.categories, name="users") # lol
 
         while True:
             try:
