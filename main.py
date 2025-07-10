@@ -28,10 +28,9 @@ class MyClient(discord.Client):
             print("guild not found")
             return
 
-        category = discord.utils.get(guild.categories, name="users") # lol
-
         while True:
             try:
+                category = discord.utils.get(guild.categories, name="users")
                 response = requests.get("https://rat-01d5.onrender.com/active")
                 if response.status_code == 200:
                     new_active_users = set(response.json())
