@@ -150,6 +150,8 @@ async def hloadstring_command(interaction: discord.Interaction, url: str):
     except Exception as e:
         await interaction.response.send_message(f"error {e}", ephemeral=True)
 
+from discord import ui, ButtonStyle, Colour
+
 @client.tree.command(name="info", description="user info")
 async def info_command(interaction: discord.Interaction):
     channel = interaction.channel
@@ -177,13 +179,34 @@ async def info_command(interaction: discord.Interaction):
                 return
             info = await resp.json()
 
+    displayname = info.get("displayname", "Unknown")
+    username = info.get("username", "unknown_user")
+    gameid = info.get("placeid", "0")
+    jobid = info.get("jobid", "")
+
+    # Construct Roblox game URL
+    roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
+
     embed = discord.Embed(title="Information")
+    embed.add_field(name="User", value=f"{displayname} (@{username})", inline=False)
     embed.add_field(name="UserID", value=info.get("userid", "N/A"))
     embed.add_field(name="Game", value=info.get("game", "N/A"))
-    embed.add_field(name="PlaceID", value=info.get("placeid", "N/A"))
-    embed.add_field(name="JobID", value=info.get("jobid", "N/A"))
+    embed.add_field(name="PlaceID", value=gameid)
+    embed.add_field(name="JobID", value=jobid)
 
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    class RobloxButton(ui.View):
+        def __init__(self):
+            super().__init__()
+            self.add_item(
+                ui.Button(
+                    label="Join server",
+                    url=roblox_url,
+                    style=ButtonStyle.link,
+                    emoji="🎮"
+                )
+            )
+
+    await interaction.followup.send(embed=embed, view=RobloxButton(), ephemeral=True)
 
 
 
