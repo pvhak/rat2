@@ -203,4 +203,5 @@ async def info_command(interaction: discord.Interaction):
 
 
 
-client.run(sys.argv[1])
+client.run(os.getenv("TOKEN"))
+
