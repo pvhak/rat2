@@ -185,7 +185,7 @@ async def info_command(interaction: discord.Interaction):
 
     await interaction.followup.send(embed=embed, ephemeral=True)
 
-@client.tree.command(name="clear_active", description="clear DB")
+@client.tree.command(name="cleardb", description="clears database")
 @app_commands.describe(confirm="type 'doitretard' to force clear")
 async def clear_active_command(interaction: discord.Interaction, confirm: str = None):
     if not interaction.user.guild_permissions.administrator:
