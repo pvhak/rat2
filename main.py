@@ -185,6 +185,8 @@ async def info_command(interaction: discord.Interaction):
 
     await interaction.followup.send(embed=embed, ephemeral=True)
 
+
+
 @client.tree.command(name="cleardb", description="clears database")
 @app_commands.describe(confirm="type 'doitretard' to force clear")
 async def clear_active_command(interaction: discord.Interaction, confirm: str = None):
@@ -194,6 +196,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
 
     author_id = interaction.user.id
     DEL_KEY = os.getenv("delkey")
+    print(f"Sending key: {DEL_KEY}")
 
     async def run_clear():
         await interaction.response.defer(ephemeral=True)
@@ -234,6 +237,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     else:
         await run_clear()
         client.clear_confirmations.discard(author_id)
+
 
 
 
