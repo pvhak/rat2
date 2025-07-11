@@ -191,26 +191,55 @@ async def info_command(interaction: discord.Interaction):
     else:
         roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
 
-    embed = discord.Embed(title="Information")
-    embed.add_field(name="User", value=f"{displayname} (@{username})", inline=False)
-    embed.add_field(name="UserID", value=info.get("userid", "N/A"))
-    embed.add_field(name="Game", value=info.get("game", "N/A"))
-    embed.add_field(name="PlaceID", value=gameid)
-    embed.add_field(name="JobID", value=jobid)
+from discord import ui, ButtonStyle
 
-    class RobloxButton(ui.View):
-        def __init__(self):
-            super().__init__()
-            self.add_item(
-                ui.Button(
-                    label="Join server",
-                    url=roblox_url,
-                    style=ButtonStyle.link,
-                    emoji="🎮"
-                )
+displayname = info.get("displayname", "Unknown")
+username = info.get("username", "unknown_user")
+gameid = info.get("placeid", "0")
+jobid = info.get("jobid", "")
+userid = info.get("userid", "N/A")
+
+# Define custom game names for known game IDs
+custom_game_names = {
+    "8986335348": "Mortem-Metallum",
+    "4169490976": "Mortem-Metallum-Alpha"
+}
+
+# Construct Roblox game URL
+if gameid in custom_game_names:
+    gamename = custom_game_names[gameid]
+    roblox_url = f"https://www.roblox.com/games/{gameid}/{gamename}?serverJobId={jobid}"
+else:
+    roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
+
+profile_url = f"https://www.roblox.com/users/{userid}/profile"
+
+embed = discord.Embed(title="Information")
+embed.add_field(name="Username", value=f"@{username}", inline=False)
+embed.add_field(name="UserID", value=userid)
+embed.add_field(name="Game", value=info.get("game", "N/A"))
+embed.add_field(name="PlaceID", value=gameid)
+embed.add_field(name="JobID", value=jobid)
+
+class RobloxButton(ui.View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(
+            ui.Button(
+                label="Join Server",
+                url=roblox_url,
+                style=ButtonStyle.link
             )
+        )
+        self.add_item(
+            ui.Button(
+                label="View Profile",
+                url=profile_url,
+                style=ButtonStyle.link
+            )
+        )
 
-    await interaction.followup.send(embed=embed, view=RobloxButton(), ephemeral=True)
+await interaction.followup.send(embed=embed, view=RobloxButton(), ephemeral=True)
 
 
 
