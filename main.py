@@ -50,7 +50,6 @@ class MyClient(discord.Client):
             await asyncio.sleep(15)
 
         self.processing_queue = False
-
     async def poll_active_users(self):
         await self.wait_until_ready()
         guild = discord.utils.get(self.guilds, id=1392242413740883968)
@@ -65,6 +64,8 @@ class MyClient(discord.Client):
                     new_active_users = set(response.json())
                     added = new_active_users - self.active_users
                     removed = self.active_users - new_active_users
+
+                    # new
                     for uid in added:
                         existing_channel = discord.utils.get(guild.text_channels, name=uid)
                         if not existing_channel:
@@ -76,10 +77,17 @@ class MyClient(discord.Client):
                                 await existing_channel.send(embed=embed, view=view)
                             else:
                                 await existing_channel.send("online (no info)")
+                    # offline
                     for uid in removed:
                         channel = discord.utils.get(guild.text_channels, name=uid)
                         if channel:
-                            await channel.send("offline")
+                            try:
+                                await channel.send("offline (deleting ts)")
+                                await asyncio.sleep(1)
+                                await channel.delete(reason=f"{uid} went offline")
+                                print(f"[DISCORD] deleted channel for offline user {uid}")
+                            except discord.HTTPException as e:
+                                print(f"[ERROR] failed to delete channel for {uid}: {e}")
                     self.active_users = new_active_users
                     asyncio.create_task(self.process_channel_queue(guild, category))
                 else:
@@ -87,6 +95,9 @@ class MyClient(discord.Client):
             except Exception as e:
                 print("error polling:", e)
             await asyncio.sleep(5)
+
+
+
 
 client = MyClient()
 
