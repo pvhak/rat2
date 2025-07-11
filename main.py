@@ -183,9 +183,13 @@ async def info_command(interaction: discord.Interaction):
     username = info.get("username", "unknown_user")
     gameid = info.get("placeid", "0")
     jobid = info.get("jobid", "")
+    commongn = {"8986335348": "Mortem-Metallum", "4169490976": "Mortem-Metallum-Alpha"}
 
-    # Construct Roblox game URL
-    roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
+    if gameid in commongn:
+        gamename = commongn[gameid]
+        roblox_url = f"https://www.roblox.com/games/{gameid}/{gamename}?serverJobId={jobid}"
+    else:
+        roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
 
     embed = discord.Embed(title="Information")
     embed.add_field(name="User", value=f"{displayname} (@{username})", inline=False)
