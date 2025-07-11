@@ -102,6 +102,8 @@ async def generate_info_embed(uid: str):
     gameid = info.get("placeid", "0")
     jobid = info.get("jobid", "")
     userid = info.get("userid", "N/A")
+    thumbnail_url = info.get("thumbnail") or f"https://www.roblox.com/headshot-thumbnail/image?userId={userid}&width=420&height=420&format=png"
+
 
     roblox_url = f"https://www.roblox.com/games/start?placeId={gameid}&gameId={jobid}"
     profile_url = f"https://www.roblox.com/users/{userid}/profile"
@@ -112,7 +114,7 @@ async def generate_info_embed(uid: str):
     embed.add_field(name="Game", value=info.get("game", "N/A"))
     embed.add_field(name="PlaceID", value=gameid)
     embed.add_field(name="JobID", value=jobid)
-
+    embed.set_thumbnail(url=thumbnail_url)
     view = ui.View()
     view.add_item(ui.Button(label="Join server", url=roblox_url, style=ButtonStyle.link))
     view.add_item(ui.Button(label="View profile", url=profile_url, style=ButtonStyle.link))
