@@ -3,6 +3,7 @@ from discord import TextChannel, app_commands, ui, ButtonStyle
 import requests
 import os
 import asyncio
+import json
 import aiohttp
 
 class MyClient(discord.Client):
@@ -104,9 +105,18 @@ client = MyClient()
 async def generate_info_embed(uid: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://notarat-798z.onrender.com/info_report/{uid}") as resp:
+            print(f"[DEBUG] Status: {resp.status}")
+            text = await resp.text()
+            print(f"[DEBUG] Body: {text}")
+            
             if resp.status != 200:
                 return None, None
-            info = await resp.json()
+            
+            try:
+                info = json.loads(text)
+            except json.JSONDecodeError:
+                print(f"[ERROR] Failed to decode JSON for UID {uid}")
+                return None, None
 
     displayname = info.get("displayname", "Unknown")
     username = info.get("username", "unknown_user")
@@ -114,7 +124,6 @@ async def generate_info_embed(uid: str):
     jobid = info.get("jobid", "")
     userid = info.get("userid", "N/A")
     thumbnail_url = info.get("thumbnail") or f"https://www.roblox.com/headshot-thumbnail/image?userId={userid}&width=420&height=420&format=png"
-
 
     roblox_url = f"https://www.roblox.com/games/start?placeId={gameid}&gameId={jobid}"
     profile_url = f"https://www.roblox.com/users/{userid}/profile"
@@ -126,6 +135,7 @@ async def generate_info_embed(uid: str):
     embed.add_field(name="PlaceID", value=gameid)
     embed.add_field(name="JobID", value=jobid)
     embed.set_thumbnail(url=thumbnail_url)
+
     view = ui.View()
     view.add_item(ui.Button(label="Join server", url=roblox_url, style=ButtonStyle.link))
     view.add_item(ui.Button(label="View profile", url=profile_url, style=ButtonStyle.link))
