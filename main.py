@@ -303,4 +303,4 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
 
 
 
-client.run(os.getenv("TOKEN"))
+# client.run(os.getenv("TOKEN"))
