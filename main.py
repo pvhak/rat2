@@ -284,7 +284,7 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
         await run_clear()
         return
 
-    if author_id not in client.clear_confirmations:
+    if author_id not in client.clear_confirmations: # ok
         client.clear_confirmations.add(author_id)
         await interaction.response.send_message(
             "run the cmd again within 30 seconds to confirm\n"
