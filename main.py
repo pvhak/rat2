@@ -234,7 +234,7 @@ async def info_command(interaction: discord.Interaction):
 @app_commands.describe(confirm="type 'doitretard' to force clear")
 async def clear_active_command(interaction: discord.Interaction, confirm: str = None):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("kid u got no perms", ephemeral=True)
+        await interaction.response.send_message("fuck you nigga", ephemeral=True)
         return
 
     author_id = interaction.user.id
