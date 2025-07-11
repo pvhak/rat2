@@ -234,14 +234,14 @@ async def info_command(interaction: discord.Interaction):
 @app_commands.describe(confirm="type 'doitretard' to force clear")
 async def clear_active_command(interaction: discord.Interaction, confirm: str = None):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("fuck you nigga", ephemeral=True)
+        await interaction.response.send_message("fuck you nigga", ephemeral=False)
         return
 
     author_id = interaction.user.id
     DEL_KEY = os.getenv("delkey")
 
     async def run_clear():
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         try:
             res = requests.post("https://rat-01d5.onrender.com/clear_active", json={"key": DEL_KEY})
             if res.status_code == 200:
