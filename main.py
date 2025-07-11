@@ -45,12 +45,19 @@ class MyClient(discord.Client):
                 if embed:
                     await channel.send(embed=embed, view=view)
                 else:
-                    await channel.send("online (no info)")
+                    await channel.delete(reason="no info returned")
+                    print(f"[DISCORD] deleted channel for {uid} due to missing info")
+                    try:
+                        requests.post("https://notarat-798z.onrender.com/disconnect", json={"userid": uid})
+                        print(f"[DB] removed {uid} from db")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to remove UID {uid} from DB: {e}")
             except discord.HTTPException as e:
-                print(f"Error creating channel for {uid}: {e}")
+                print(f"error creating channel for {uid}: {e}")
             await asyncio.sleep(15)
 
         self.processing_queue = False
+
     async def poll_active_users(self):
         await self.wait_until_ready()
         guild = discord.utils.get(self.guilds, id=1392242413740883968)
@@ -77,14 +84,19 @@ class MyClient(discord.Client):
                             if embed:
                                 await existing_channel.send(embed=embed, view=view)
                             else:
-                                await existing_channel.send("online (no info)")
+                                await existing_channel.delete(reason="No info returned; auto-deleted")
+                                print(f"[DISCORD] deleted channel for {uid} due to missing info")
+                                try:
+                                    requests.post("https://notarat-798z.onrender.com/remove", json={"uid": uid})
+                                    print(f"[DB] removed UID {uid} from database")
+                                except Exception as e:
+                                    print(f"[ERROR] Failed to remove UID {uid} from DB: {e}")
+
                     # offline
                     for uid in removed:
                         channel = discord.utils.get(guild.text_channels, name=uid)
                         if channel:
                             try:
-                                await channel.send("offline (deleting ts)")
-                                await asyncio.sleep(1)
                                 await channel.delete(reason=f"{uid} went offline")
                                 print(f"[DISCORD] deleted channel for offline user {uid}")
                             except discord.HTTPException as e:
@@ -96,8 +108,6 @@ class MyClient(discord.Client):
             except Exception as e:
                 print("error polling:", e)
             await asyncio.sleep(5)
-
-
 
 
 client = MyClient()
@@ -257,7 +267,7 @@ async def info_command(interaction: discord.Interaction):
 @app_commands.describe(confirm="type 'doitretard' to force clear")
 async def clear_active_command(interaction: discord.Interaction, confirm: str = None):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("fuck you nigga", ephemeral=False)
+        await interaction.response.send_message("you don't have permission", ephemeral=True)
         return
 
     author_id = interaction.user.id
