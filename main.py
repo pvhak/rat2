@@ -207,17 +207,8 @@ async def info_command(interaction: discord.Interaction):
     jobid = info.get("jobid", "")
     userid = info.get("userid", "N/A")
 
-    custom_game_names = {
-        "8986335348": "Mortem-Metallum",
-        "4169490976": "Mortem-Metallum-Alpha"
-    }
 
-    if gameid in custom_game_names:
-        gamename = custom_game_names[gameid]
-        roblox_url = f"https://www.roblox.com/games/{gameid}/{gamename}?serverJobId={jobid}"
-    else:
-        roblox_url = f"https://www.roblox.com/games/{gameid}/?serverJobid={jobid}"
-
+    roblox_url = f"https://www.roblox.com/games/start?placeId={gameid}&gameId={jobid}"
     profile_url = f"https://www.roblox.com/users/{userid}/profile"
 
     embed = discord.Embed(title="Information")
