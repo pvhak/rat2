@@ -13,12 +13,39 @@ class MyClient(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.active_users = set()
-        self.clear_confirmations = set()  # track who confirmed once
+        self.clear_confirmations = set()
+        self.channel_creation_queue = []
+        self.processing_queue = False
 
     async def on_ready(self):
         await self.tree.sync()
         print(f"online as {self.user}")
         asyncio.create_task(self.poll_active_users())
+
+    async def process_channel_queue(self, guild, category):
+        if self.processing_queue:
+            return
+        self.processing_queue = True
+
+        while self.channel_creation_queue:
+            uid = self.channel_creation_queue.pop(0)
+            existing_channel = discord.utils.get(guild.text_channels, name=uid)
+            if existing_channel:
+                continue
+
+            try:
+                if category:
+                    channel = await guild.create_text_channel(uid, category=category)
+                else:
+                    print("category not found.. creating channel outside category...")
+                    channel = await guild.create_text_channel(uid)
+
+                await channel.send("online")
+            except discord.HTTPException as e:
+                print(f"Error creating channel for {uid}: {e}")
+            await asyncio.sleep(15)
+
+        self.processing_queue = False
 
     async def poll_active_users(self):
         await self.wait_until_ready()
@@ -26,37 +53,29 @@ class MyClient(discord.Client):
         if not guild:
             print("guild not found")
             return
-
         while True:
             try:
                 category = discord.utils.get(guild.categories, name="users")
                 response = requests.get("https://rat-01d5.onrender.com/active")
                 if response.status_code == 200:
                     new_active_users = set(response.json())
-
                     added = new_active_users - self.active_users
                     removed = self.active_users - new_active_users
-
                     for uid in added:
-                        channel = discord.utils.get(guild.text_channels, name=uid)
-                        if not channel:
-                            if category:
-                                channel = await guild.create_text_channel(uid, category=category)
-                            else:
-                                print("category not found.. creating channel outside category...")
-                                channel = await guild.create_text_channel(uid)
-                        await channel.send("online")
-
+                        existing_channel = discord.utils.get(guild.text_channels, name=uid)
+                        if not existing_channel:
+                            if uid not in self.channel_creation_queue:
+                                self.channel_creation_queue.append(uid)
+                        elif existing_channel:
+                            await existing_channel.send("online")
                     for uid in removed:
                         channel = discord.utils.get(guild.text_channels, name=uid)
                         if channel:
                             await channel.send("offline")
-
                     self.active_users = new_active_users
-
+                    asyncio.create_task(self.process_channel_queue(guild, category))
                 else:
                     print("failed to poll active users:", response.status_code)
-
             except Exception as e:
                 print("error polling:", e)
             await asyncio.sleep(5)
